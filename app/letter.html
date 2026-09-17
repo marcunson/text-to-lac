@@ -134,6 +134,9 @@ Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
         <div><label>Margen sup. (mm)</label><input type="number" id="inpMarginT" value="18" min="0" max="80" step="0.5"></div>
         <div><label>Margen inf. (mm)</label><input type="number" id="inpMarginB" value="18" min="0" max="80" step="0.5"></div>
       </div>
+      <label>Lineas maximas por hoja</label>
+      <input type="number" id="inpMaxLines" value="28" min="10" max="60" step="1">
+      <div class="hint">Bambu Studio prepara mejor archivos con menos trazos por hoja. Sube este valor si quieres apurar mas texto por pagina.</div>
       <label>Alineacion</label>
       <select id="inpAlign">
         <option value="left">Izquierda</option>
@@ -170,7 +173,7 @@ Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
       <label>Baile de linea base (±mm)</label>
       <div class="slider"><input type="range" id="inpVBase" min="0" max="2" step="0.05" value="0.2"><span class="val" id="valVBase"></span></div>
       <label>Trazado irregular (mm)</label>
-      <div class="slider"><input type="range" id="inpVWob" min="0" max="0.5" step="0.02" value="0.08"><span class="val" id="valVWob"></span></div>
+      <div class="slider"><input type="range" id="inpVWob" min="0" max="0.5" step="0.02" value="0"><span class="val" id="valVWob"></span></div>
       <div class="btnrow"><button id="btnReroll"><span data-icon="dice"></span> Rehacer variacion</button></div>
     </div>
   </details>
@@ -182,8 +185,16 @@ Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
       <input type="text" id="inpFname" value="carta">
       <label>Objeto en Bambu Studio</label>
       <select id="inpGroup">
-        <option value="all">Toda la pagina como un objeto</option>
         <option value="line">Un objeto por linea</option>
+        <option value="all">Toda la pagina como un objeto</option>
+      </select>
+      <label>Simplificacion de trazos</label>
+      <select id="inpSimplify">
+        <option value="1" selected>Alta, recomendada para Bambu Studio</option>
+        <option value="2">Media</option>
+        <option value="3">Suave</option>
+        <option value="4">Muy suave</option>
+        <option value="5">Sin simplificar</option>
       </select>
       <label>Proceso</label>
       <select id="inpProcess">
@@ -429,6 +440,7 @@ function layout() {
   const ts = textSettings();
   const maxW = Math.max(10, ps.w - ps.ml - ps.mr);
   const bottom = ps.h - ps.mb;
+  const maxLines = Math.max(1, +$("inpMaxLines").value || 28);
   const paras = paragraphsFromText($("inpText").value);
   const pages = [{ lines: [] }];
   S.missing = new Set();
@@ -442,7 +454,7 @@ function layout() {
     y = ps.mt + ts.size;
   };
   const addLine = text => {
-    if (y > bottom && pages[pageIndex].lines.length) newPage();
+    if ((y > bottom || pages[pageIndex].lines.length >= maxLines) && pages[pageIndex].lines.length) newPage();
     const lineIndex = lineCounter++;
     const glyphs = makeGlyphsForLine(text, pageIndex, lineIndex, y, ts, ps);
     pages[pageIndex].lines.push({ text, y, glyphs });
@@ -550,10 +562,15 @@ function updateStatus() {
 
 function buildGroups(page) {
   if (!page.glyphs.length) return null;
+  const eps = window.LacExport.resampleEps(+$("inpSimplify").value);
+  const clean = strokes => window.LacExport.resampleStrokes(strokes, eps);
   if ($("inpGroup").value === "line") {
-    return page.lines.map((line, i) => ({ name: "Linea " + (i + 1), strokes: line.glyphs.flatMap(g => g.strokes) })).filter(g => g.strokes.length);
+    return page.lines.map((line, i) => ({
+      name: "Linea " + (i + 1),
+      strokes: clean(line.glyphs.flatMap(g => g.strokes)),
+    })).filter(g => g.strokes.length);
   }
-  return [{ name: "Carta", strokes: page.glyphs.flatMap(g => g.strokes) }];
+  return [{ name: "Carta", strokes: clean(page.glyphs.flatMap(g => g.strokes)) }];
 }
 
 function makeThumbnail(page) {
@@ -671,8 +688,8 @@ bindSlider("inpVBase", "valVBase", " mm");
 bindSlider("inpVWob", "valVWob", " mm");
 [
   "inpText", "inpKeepBreaks", "inpPreserveParagraphs", "inpPageW", "inpPageH",
-  "inpMarginL", "inpMarginR", "inpMarginT", "inpMarginB", "inpAlign",
-  "inpFont", "inpVarOn", "inpGroup", "inpProcess", "inpFlipY",
+  "inpMarginL", "inpMarginR", "inpMarginT", "inpMarginB", "inpMaxLines", "inpAlign",
+  "inpFont", "inpVarOn", "inpGroup", "inpSimplify", "inpProcess", "inpFlipY",
 ].forEach(id => bindRelayout(id, (id.startsWith("inp") && $(id).type === "checkbox") ? "change" : "input"));
 window.addEventListener("resize", draw);
 window.addEventListener("storage", e => { if (e.key === "hw_fonts") { fillFontSelect(); layout(); } });

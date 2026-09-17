@@ -41,6 +41,9 @@ load a plain-text letter, choose the built-in single-line font, margins, text
 size and line spacing, then preview the automatic A4 portrait layout page by
 page. Export creates one `.lac` per sheet (`letter-001.lac`, `letter-002.lac`,
 ...) in a `.zip`, so each page can be opened separately in Bambu Studio.
+For Bambu Studio compatibility it defaults to one object per line, simplified
+paths and a maximum line count per sheet; raise those limits only after a test
+page prepares successfully.
 
 The letter mode reuses the same font data and shared `.lac` exporter as the
 normal text tool, so files stay compatible with the existing Bambu/plotter
