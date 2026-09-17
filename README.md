@@ -34,6 +34,18 @@ The text writer, whether inside the Studio (as a Text layer) or standalone:
    (KCPenDraw) and the material "Generic 80g Printer Paper" are pre-assigned;
    the material is easy to change inside the Suite.
 
+## Letter mode
+
+`app/letter.html` adds a local letter workflow for long `.txt` input. Paste or
+load a plain-text letter, choose the built-in single-line font, margins, text
+size and line spacing, then preview the automatic A4 portrait layout page by
+page. Export creates one `.lac` per sheet (`letter-001.lac`, `letter-002.lac`,
+...) in a `.zip`, so each page can be opened separately in Bambu Studio.
+
+The letter mode reuses the same font data and shared `.lac` exporter as the
+normal text tool, so files stay compatible with the existing Bambu/plotter
+workflow.
+
 ## Layer Studio
 
 `app/studio.html` is the central surface. Add layers for text, your own
@@ -102,6 +114,8 @@ like the text writer.
 
 - `app/studio.html` — the Layer Studio (central surface: layers, transform,
   align, `.handschrift` save/autosave, combined .lac/SVG export, Kurvenauflösung)
+- `app/letter.html` — automatic letter layout from `.txt` to one `.lac` per A4
+  page
 - `app/index.html` — the text writer (preview, variation, .lac/SVG export;
   also the Studio's Text-layer engine via `?embed=1`)
 - `app/handschrift.html` — handwriting capture (variants per character)

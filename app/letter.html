@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Carta → .lac — Handschrift</title>
+<style>
+  :root {
+    --bg: #f4f6f5; --panel: #fcfdfc; --border: #d8ddda; --text: #1b201d;
+    --muted: #68716c; --accent: #00ae42; --accent-dark: #008f36; --hover: #eef1ef;
+    --warn: #b45309; --warn-bg: #fef3c7;
+  }
+  html[data-theme="dark"] {
+    --bg: #141715; --panel: #1d2220; --border: #343b37; --text: #e6eae7;
+    --muted: #98a29c; --hover: #272d2a; --warn-bg: #3a2a12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg);
+    color: var(--text); display: flex; height: 100vh; overflow: hidden; font-size: 13px;
+  }
+  #sidebar {
+    width: 370px; min-width: 370px; background: var(--panel); border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 14px 16px 40px;
+  }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #canvasWrap { flex: 1; position: relative; overflow: auto; background: #c2c8c4; }
+  html[data-theme="dark"] #canvasWrap { background: #101312; }
+  canvas { display: block; min-width: 100%; }
+  .topnav { display: flex; gap: 6px; align-items: center; margin: 0 0 12px; flex-wrap: wrap; }
+  .topnav a.nav {
+    font-size: 13.5px; color: var(--muted); text-decoration: none; padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+    white-space: nowrap;
+  }
+  .topnav a.nav:hover { border-color: var(--accent); color: var(--text); }
+  .topnav button { padding: 5px 8px; font-size: 12.5px; white-space: nowrap; }
+  .topnav .sp { flex: 1; }
+  h1 { font-size: 17px; letter-spacing: 0; margin: 2px 0 14px; }
+  h1 small { color: var(--muted); font-weight: 400; font-size: 11.5px; letter-spacing: 0; display: block; margin-top: 3px; }
+  details { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; background: var(--panel); }
+  details summary { cursor: pointer; padding: 9px 12px; font-weight: 600; font-size: 13px; user-select: none; }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  .body { padding: 10px 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  label:first-child { margin-top: 0; }
+  textarea {
+    width: 100%; min-height: 170px; font-family: inherit; font-size: 13px; padding: 8px;
+    border: 1px solid var(--border); border-radius: 6px; resize: vertical; background: var(--panel); color: var(--text);
+  }
+  select, input[type=text], input[type=number] {
+    width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--panel); color: var(--text);
+  }
+  input[type=file] { width: 100%; font-size: 12px; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .row { display: flex; gap: 8px; }
+  .row > div { flex: 1; }
+  .slider { display: grid; grid-template-columns: 1fr 58px; gap: 8px; align-items: center; }
+  .val { font-size: 11px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  button {
+    padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel); color: var(--text); cursor: pointer;
+  }
+  button:hover { background: var(--hover); }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+    width: 100%; padding: 11px; font-size: 14px; margin-top: 4px;
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  .btnrow { display: flex; gap: 8px; margin-top: 8px; }
+  .btnrow button { flex: 1; }
+  .checkrow { display: flex; align-items: center; gap: 7px; margin: 8px 0 0; font-size: 12.5px; color: var(--text); }
+  .checkrow input { accent-color: var(--accent); }
+  .hint { font-size: 11px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+  .warn { font-size: 11px; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 6px 8px; margin-top: 8px; display: none; }
+  #statusbar {
+    padding: 5px 14px; font-size: 11px; color: var(--muted); background: var(--panel);
+    border-top: 1px solid var(--border); display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  #pageList {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+  }
+  .pagechip {
+    padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel);
+    color: var(--muted); cursor: pointer; font-size: 12px;
+  }
+  .pagechip.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="topnav">
+    <a class="nav" href="../index.html" title="Handschrift — Home" data-icon="home"></a>
+    <a class="nav" href="index.html" title="Text → .lac" data-icon="text"></a>
+    <a class="nav" href="studio.html" title="Layer Studio" data-icon="layers"></a>
+    <span class="sp"></span>
+    <button id="btnTheme"></button>
+  </div>
+  <h1>Carta → .lac<small>Maquetacion automatica en A4, un archivo por hoja</small></h1>
+
+  <details open>
+    <summary>Carta</summary>
+    <div class="body">
+      <label>Texto</label>
+      <textarea id="inpText">Querida persona:
+
+Esta es una prueba de carta larga. La pagina ajusta automaticamente las lineas y crea tantas hojas como hagan falta.
+
+Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
+      <label>Cargar .txt</label>
+      <input type="file" id="fileTxt" accept=".txt,text/plain">
+      <div class="checkrow"><input type="checkbox" id="inpKeepBreaks"><span>Conservar saltos de linea del TXT</span></div>
+      <div class="checkrow"><input type="checkbox" id="inpPreserveParagraphs" checked><span>Respetar parrafos y lineas en blanco</span></div>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Pagina</summary>
+    <div class="body">
+      <label>Tamano</label>
+      <select id="inpPaper">
+        <option value="a4">A4 vertical — 210 x 297 mm</option>
+        <option value="a4plus">A4 Plus vertical — editable abajo</option>
+      </select>
+      <div class="row">
+        <div><label>Ancho (mm)</label><input type="number" id="inpPageW" value="210" min="100" max="400" step="1"></div>
+        <div><label>Alto (mm)</label><input type="number" id="inpPageH" value="297" min="100" max="500" step="1"></div>
+      </div>
+      <div class="row">
+        <div><label>Margen izq. (mm)</label><input type="number" id="inpMarginL" value="15" min="0" max="80" step="0.5"></div>
+        <div><label>Margen der. (mm)</label><input type="number" id="inpMarginR" value="15" min="0" max="80" step="0.5"></div>
+      </div>
+      <div class="row">
+        <div><label>Margen sup. (mm)</label><input type="number" id="inpMarginT" value="18" min="0" max="80" step="0.5"></div>
+        <div><label>Margen inf. (mm)</label><input type="number" id="inpMarginB" value="18" min="0" max="80" step="0.5"></div>
+      </div>
+      <label>Alineacion</label>
+      <select id="inpAlign">
+        <option value="left">Izquierda</option>
+        <option value="center">Centrada</option>
+      </select>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Letra</summary>
+    <div class="body">
+      <label>Fuente</label>
+      <select id="inpFont"></select>
+      <label>Tamano letra (mm)</label>
+      <div class="slider"><input type="range" id="inpSize" min="3" max="10" step="0.1" value="4.8"><span class="val" id="valSize"></span></div>
+      <label>Interlineado</label>
+      <div class="slider"><input type="range" id="inpLineH" min="1" max="2.2" step="0.05" value="1.35"><span class="val" id="valLineH"></span></div>
+      <label>Espacio entre letras</label>
+      <div class="slider"><input type="range" id="inpTrack" min="-1" max="3" step="0.05" value="0"><span class="val" id="valTrack"></span></div>
+      <label>Espacio entre palabras</label>
+      <div class="slider"><input type="range" id="inpWordSp" min="0.6" max="2" step="0.05" value="1"><span class="val" id="valWordSp"></span></div>
+      <div class="hint">Estos valores son el punto de partida para meter bastante texto sin perder legibilidad.</div>
+    </div>
+  </details>
+
+  <details>
+    <summary>Variacion manuscrita</summary>
+    <div class="body">
+      <div class="checkrow"><input type="checkbox" id="inpVarOn" checked><span>Activar variacion</span></div>
+      <label>Rotacion por letra (±°)</label>
+      <div class="slider"><input type="range" id="inpVRot" min="0" max="8" step="0.25" value="1.5"><span class="val" id="valVRot"></span></div>
+      <label>Tamano por letra (±%)</label>
+      <div class="slider"><input type="range" id="inpVSize" min="0" max="12" step="0.5" value="3"><span class="val" id="valVSize"></span></div>
+      <label>Baile de linea base (±mm)</label>
+      <div class="slider"><input type="range" id="inpVBase" min="0" max="2" step="0.05" value="0.2"><span class="val" id="valVBase"></span></div>
+      <label>Trazado irregular (mm)</label>
+      <div class="slider"><input type="range" id="inpVWob" min="0" max="0.5" step="0.02" value="0.08"><span class="val" id="valVWob"></span></div>
+      <div class="btnrow"><button id="btnReroll"><span data-icon="dice"></span> Rehacer variacion</button></div>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Exportar</summary>
+    <div class="body">
+      <label>Nombre base</label>
+      <input type="text" id="inpFname" value="carta">
+      <label>Objeto en Bambu Studio</label>
+      <select id="inpGroup">
+        <option value="all">Toda la pagina como un objeto</option>
+        <option value="line">Un objeto por linea</option>
+      </select>
+      <label>Proceso</label>
+      <select id="inpProcess">
+        <option value="KCPenDraw">Stift zeichnen (KCPenDraw)</option>
+        <option value="KCPenDrawFill">Stift ausmalen (KCPenDrawFill)</option>
+      </select>
+      <div class="checkrow"><input type="checkbox" id="inpFlipY"><span>Invertir eje Y si Bambu lo abre al reves</span></div>
+      <button class="primary" id="btnExportZip">Exportar todas las hojas (.zip)</button>
+      <div class="btnrow"><button id="btnExportPage">Exportar hoja seleccionada (.lac)</button></div>
+      <div id="pageList"></div>
+      <div class="warn" id="warnBox"></div>
+    </div>
+  </details>
+</div>
+
+<div id="main">
+  <div id="canvasWrap"><canvas id="cv"></canvas></div>
+  <div id="statusbar">
+    <span id="stPages"></span>
+    <span id="stChars"></span>
+    <span id="stMissing"></span>
+  </div>
+</div>
+
+<script src="fonts.js"></script>
+<script src="configs.js"></script>
+<script src="lac.js?v=5"></script>
+<script src="ui.js?v=10"></script>
+<script>
+"use strict";
+
+const S = {
+  seed: 42,
+  pages: [],
+  missing: new Set(),
+  selectedPage: 0,
+};
+
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const wrap = $("canvasWrap");
+
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function glyphRng(seed, page, line, col) {
+  return mulberry32((seed * 374761393 + page * 2246822519 + line * 668265263 + col * 3266489917) >>> 0);
+}
+
+function hwFonts() {
+  try {
+    const s = JSON.parse(localStorage.getItem("hw_fonts")) || {};
+    const out = {};
+    for (const [id, f] of Object.entries(s)) out[id] = Object.assign({}, f, { name: "\u270E\uFE0E " + f.name });
+    return out;
+  } catch { return {}; }
+}
+function allFonts() { return Object.assign({}, window.SL_FONTS, hwFonts()); }
+function currentFont() { return allFonts()[$("inpFont").value] || Object.values(allFonts())[0]; }
+
+const CHAR_FALLBACK = { "—": "-", "–": "-", "„": '"', "“": '"', "”": '"', "’": "'", "‘": "'", "…": "." };
+function pickGlyph(font, ch, r) {
+  const get = c => {
+    if (font.glyphsVar) {
+      const v = font.glyphsVar[c];
+      if (v && v.length) return v[Math.min(v.length - 1, Math.floor(r * v.length))];
+    }
+    return font.glyphs[c] || null;
+  };
+  return get(ch) || (CHAR_FALLBACK[ch] ? get(CHAR_FALLBACK[ch]) : null);
+}
+
+function fillFontSelect() {
+  const sel = $("inpFont");
+  const prev = sel.value;
+  sel.innerHTML = "";
+  for (const [id, f] of Object.entries(allFonts())) {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = f.name || id;
+    sel.appendChild(opt);
+  }
+  if (prev && allFonts()[prev]) sel.value = prev;
+  else if (allFonts().HersheyScriptMed) sel.value = "HersheyScriptMed";
+}
+
+function pageSettings() {
+  return {
+    w: +$("inpPageW").value,
+    h: +$("inpPageH").value,
+    ml: +$("inpMarginL").value,
+    mr: +$("inpMarginR").value,
+    mt: +$("inpMarginT").value,
+    mb: +$("inpMarginB").value,
+  };
+}
+
+function textSettings() {
+  const font = currentFont();
+  const size = +$("inpSize").value;
+  return {
+    font,
+    size,
+    scale: size / (font.capheight || font.upem * 0.7),
+    lineH: +$("inpLineH").value * size,
+    track: +$("inpTrack").value,
+    wordSp: +$("inpWordSp").value,
+    align: $("inpAlign").value,
+  };
+}
+
+function glyphAdvance(font, scale, size, ch) {
+  const g = pickGlyph(font, ch, 0.5);
+  const sp = pickGlyph(font, " ", 0.5);
+  let adv = g ? g.adv * scale : (sp ? sp.adv * scale : size * 0.5);
+  if (ch === " ") adv *= +$("inpWordSp").value;
+  return adv + +$("inpTrack").value;
+}
+function measureTextMM(text, ts) {
+  let w = 0;
+  for (const ch of [...text]) w += glyphAdvance(ts.font, ts.scale, ts.size, ch);
+  return w;
+}
+
+function paragraphsFromText(raw) {
+  const text = raw.replace(/\r/g, "");
+  if ($("inpKeepBreaks").checked) {
+    return text.split("\n").map(line => line.trim() ? { text: line, hard: true } : { blank: true });
+  }
+  if (!$("inpPreserveParagraphs").checked) {
+    return [{ text: text.replace(/\s+/g, " ").trim(), hard: false }];
+  }
+  const out = [];
+  const chunks = text.split(/\n\s*\n/);
+  chunks.forEach((chunk, idx) => {
+    const t = chunk.replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim();
+    if (t) out.push({ text: t, hard: false });
+    if (idx < chunks.length - 1) out.push({ blank: true });
+  });
+  return out;
+}
+
+function breakLongWord(word, maxW, ts) {
+  const parts = [];
+  let cur = "";
+  for (const ch of [...word]) {
+    const next = cur + ch;
+    if (cur && measureTextMM(next, ts) > maxW) { parts.push(cur); cur = ch; }
+    else cur = next;
+  }
+  if (cur) parts.push(cur);
+  return parts;
+}
+
+function wrapParagraph(text, maxW, ts) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const wordParts = measureTextMM(word, ts) > maxW ? breakLongWord(word, maxW, ts) : [word];
+    for (const part of wordParts) {
+      const candidate = line ? line + " " + part : part;
+      if (line && measureTextMM(candidate, ts) > maxW) {
+        lines.push(line);
+        line = part;
+      } else {
+        line = candidate;
+      }
+    }
+  }
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+function makeGlyphsForLine(text, pageIndex, lineIndex, baselineY, ts, ps) {
+  const varOn = $("inpVarOn").checked;
+  const vRot = varOn ? +$("inpVRot").value : 0;
+  const vSize = varOn ? +$("inpVSize").value / 100 : 0;
+  const vBase = varOn ? +$("inpVBase").value : 0;
+  const vWob = varOn ? +$("inpVWob").value : 0;
+  const lineW = measureTextMM(text, ts);
+  let x = ps.ml + (ts.align === "center" ? Math.max(0, (ps.w - ps.ml - ps.mr - lineW) / 2) : 0);
+  const glyphs = [];
+  [...text].forEach((ch, col) => {
+    const rng = glyphRng(S.seed, pageIndex, lineIndex, col);
+    const vPick = rng();
+    const g = pickGlyph(ts.font, ch, vPick);
+    const rRot = (rng() * 2 - 1) * vRot * Math.PI / 180;
+    const rScale = 1 + (rng() * 2 - 1) * vSize;
+    const rBase = (rng() * 2 - 1) * vBase;
+    const wPhase = rng() * Math.PI * 2;
+    const adv = glyphAdvance(ts.font, ts.scale, ts.size, ch);
+    if (!g || !g.strokes.length) {
+      if (ch.trim() && !g) S.missing.add(ch);
+      x += adv;
+      return;
+    }
+    const s = ts.scale * rScale;
+    const cx = g.adv * s / 2;
+    const cy = -ts.size / 2;
+    const cosR = Math.cos(rRot), sinR = Math.sin(rRot);
+    const strokes = g.strokes.map(st => {
+      let pts = st.map(p => [p[0] * s, -p[1] * s]);
+      if (vWob > 0) pts = wobble(pts, vWob, wPhase);
+      return pts.map(([px, py]) => {
+        const dx = px - cx, dy = py - cy;
+        return [x + cx + dx * cosR - dy * sinR, baselineY + rBase + cy + dx * sinR + dy * cosR];
+      });
+    });
+    glyphs.push({ char: ch, line: lineIndex, col, strokes });
+    x += adv;
+  });
+  return glyphs;
+}
+
+function wobble(pts, amp, phase) {
+  const MAXSEG = 0.9;
+  const out = [];
+  let dist = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+    const steps = Math.max(1, Math.ceil(len / MAXSEG));
+    for (let j = 0; j < steps; j++) {
+      const t = j / steps, x = x1 + dx * t, y = y1 + dy * t;
+      const nx = len ? -dy / len : 0, ny = len ? dx / len : 0;
+      const w = Math.sin((dist + len * t) * 4.3 + phase) * amp * 0.55 + Math.sin((dist + len * t) * 9.1 + phase * 0.7) * amp * 0.45;
+      out.push([x + nx * w, y + ny * w]);
+    }
+    dist += len;
+  }
+  out.push(pts[pts.length - 1].slice());
+  return out;
+}
+
+function layout() {
+  const ps = pageSettings();
+  const ts = textSettings();
+  const maxW = Math.max(10, ps.w - ps.ml - ps.mr);
+  const bottom = ps.h - ps.mb;
+  const paras = paragraphsFromText($("inpText").value);
+  const pages = [{ lines: [] }];
+  S.missing = new Set();
+  let pageIndex = 0;
+  let y = ps.mt + ts.size;
+  let lineCounter = 0;
+
+  const newPage = () => {
+    pageIndex++;
+    pages.push({ lines: [] });
+    y = ps.mt + ts.size;
+  };
+  const addLine = text => {
+    if (y > bottom && pages[pageIndex].lines.length) newPage();
+    const lineIndex = lineCounter++;
+    const glyphs = makeGlyphsForLine(text, pageIndex, lineIndex, y, ts, ps);
+    pages[pageIndex].lines.push({ text, y, glyphs });
+    y += ts.lineH;
+  };
+  const addBlank = () => {
+    const blankH = ts.lineH * 0.65;
+    if (y + blankH > bottom && pages[pageIndex].lines.length) newPage();
+    y += blankH;
+  };
+
+  for (const p of paras) {
+    if (p.blank) { addBlank(); continue; }
+    const lines = p.hard ? wrapParagraph(p.text, maxW, ts) : wrapParagraph(p.text, maxW, ts);
+    lines.forEach(addLine);
+    if ($("inpPreserveParagraphs").checked) addBlank();
+  }
+  pages.forEach((page, i) => {
+    page.index = i;
+    page.glyphs = page.lines.flatMap(line => line.glyphs);
+  });
+  S.pages = pages.filter(p => p.lines.length || pages.length === 1);
+  if (S.selectedPage >= S.pages.length) S.selectedPage = Math.max(0, S.pages.length - 1);
+  updatePageChips();
+  updateStatus();
+  draw();
+}
+
+function draw() {
+  const ps = pageSettings();
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = Math.max(640, wrap.clientWidth);
+  const pageScale = Math.min(3, Math.max(1.2, (cssW - 90) / ps.w));
+  const gap = 34;
+  const cssH = Math.max(wrap.clientHeight, S.pages.length * ps.h * pageScale + (S.pages.length + 1) * gap);
+  cv.style.width = cssW + "px";
+  cv.style.height = cssH + "px";
+  cv.width = Math.round(cssW * dpr);
+  cv.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  S.pages.forEach((page, i) => {
+    const x0 = (cssW - ps.w * pageScale) / 2;
+    const y0 = gap + i * (ps.h * pageScale + gap);
+    ctx.fillStyle = i === S.selectedPage ? "rgba(0,174,66,.18)" : "rgba(0,0,0,.12)";
+    ctx.fillRect(x0 - 7, y0 - 7, ps.w * pageScale + 14, ps.h * pageScale + 14);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(x0, y0, ps.w * pageScale, ps.h * pageScale);
+    ctx.strokeStyle = "#cfd6d1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0, y0, ps.w * pageScale, ps.h * pageScale);
+    ctx.strokeStyle = "rgba(0,174,66,.22)";
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(x0 + ps.ml * pageScale, y0 + ps.mt * pageScale, (ps.w - ps.ml - ps.mr) * pageScale, (ps.h - ps.mt - ps.mb) * pageScale);
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#68716c";
+    ctx.font = "12px -apple-system, Segoe UI, sans-serif";
+    ctx.fillText("Hoja " + (i + 1), x0, y0 - 12);
+    ctx.save();
+    ctx.translate(x0, y0);
+    ctx.scale(pageScale, pageScale);
+    ctx.strokeStyle = "#16243d";
+    ctx.lineWidth = Math.max(0.28, +$("inpSize").value * 0.065);
+    ctx.beginPath();
+    for (const gl of page.glyphs) for (const st of gl.strokes) {
+      if (st.length < 2) continue;
+      ctx.moveTo(st[0][0], st[0][1]);
+      for (let j = 1; j < st.length; j++) ctx.lineTo(st[j][0], st[j][1]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  });
+}
+
+function updatePageChips() {
+  const el = $("pageList");
+  el.innerHTML = "";
+  S.pages.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.className = "pagechip" + (i === S.selectedPage ? " active" : "");
+    b.textContent = "Hoja " + (i + 1);
+    b.onclick = () => { S.selectedPage = i; updatePageChips(); draw(); scrollToPage(i); };
+    el.appendChild(b);
+  });
+}
+function scrollToPage(i) {
+  const ps = pageSettings();
+  const cssW = Math.max(640, wrap.clientWidth);
+  const pageScale = Math.min(3, Math.max(1.2, (cssW - 90) / ps.w));
+  const gap = 34;
+  wrap.scrollTo({ top: Math.max(0, i * (ps.h * pageScale + gap)), behavior: "smooth" });
+}
+function updateStatus() {
+  const chars = [...$("inpText").value.replace(/\s/g, "")].length;
+  $("stPages").textContent = S.pages.length + " hojas";
+  $("stChars").textContent = chars + " caracteres sin espacios";
+  $("stMissing").textContent = S.missing.size ? "Faltan glifos: " + [...S.missing].join(" ") : "";
+  const warn = $("warnBox");
+  warn.style.display = S.missing.size ? "block" : "none";
+  warn.textContent = S.missing.size ? "Algunos caracteres no existen en la fuente y se omitiran: " + [...S.missing].join(" ") : "";
+}
+
+function buildGroups(page) {
+  if (!page.glyphs.length) return null;
+  if ($("inpGroup").value === "line") {
+    return page.lines.map((line, i) => ({ name: "Linea " + (i + 1), strokes: line.glyphs.flatMap(g => g.strokes) })).filter(g => g.strokes.length);
+  }
+  return [{ name: "Carta", strokes: page.glyphs.flatMap(g => g.strokes) }];
+}
+
+function makeThumbnail(page) {
+  return new Promise(res => {
+    const ps = pageSettings();
+    const c = document.createElement("canvas");
+    const sc = 512 / Math.max(ps.w, ps.h);
+    c.width = Math.round(ps.w * sc);
+    c.height = Math.round(ps.h * sc);
+    const g = c.getContext("2d");
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, c.width, c.height);
+    g.scale(sc, sc);
+    g.strokeStyle = "#16243d";
+    g.lineWidth = Math.max(0.3, +$("inpSize").value * 0.065);
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    g.beginPath();
+    for (const gl of page.glyphs) for (const st of gl.strokes) {
+      if (st.length < 2) continue;
+      g.moveTo(st[0][0], st[0][1]);
+      for (let i = 1; i < st.length; i++) g.lineTo(st[i][0], st[i][1]);
+    }
+    g.stroke();
+    c.toBlob(b => b.arrayBuffer().then(buf => res(new Uint8Array(buf))), "image/png");
+  });
+}
+
+async function makePageLac(page) {
+  const groups = buildGroups(page);
+  if (!groups) throw new Error("Pagina vacia");
+  const ps = pageSettings();
+  const thumb = await makeThumbnail(page);
+  return window.LacExport.makeLac(groups, {
+    matW: ps.w,
+    matH: ps.h,
+    processType: $("inpProcess").value,
+    flipY: $("inpFlipY").checked,
+    thumbnail: thumb,
+  });
+}
+
+function safeBaseName(name) {
+  return (name || "carta").trim().replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, "-") || "carta";
+}
+
+$("btnExportPage").onclick = async () => {
+  try {
+    const base = safeBaseName($("inpFname").value);
+    const page = S.pages[S.selectedPage];
+    const bytes = await makePageLac(page);
+    window.LacExport.download(bytes, base + "-" + String(S.selectedPage + 1).padStart(3, "0") + ".lac");
+  } catch (e) {
+    alert(e.message || e);
+  }
+};
+
+$("btnExportZip").onclick = async () => {
+  try {
+    const base = safeBaseName($("inpFname").value);
+    const files = [];
+    for (let i = 0; i < S.pages.length; i++) {
+      const bytes = await makePageLac(S.pages[i]);
+      files.push({ name: base + "-" + String(i + 1).padStart(3, "0") + ".lac", data: bytes });
+    }
+    const zip = window.LacExport.makeZip(files);
+    window.LacExport.download(zip, base + "-lac.zip");
+  } catch (e) {
+    alert(e.message || e);
+  }
+};
+
+function bindSlider(id, valId, unit) {
+  const upd = () => { $(valId).textContent = $(id).value + unit; };
+  $(id).addEventListener("input", () => { upd(); layout(); });
+  upd();
+}
+function bindRelayout(id, ev = "input") {
+  $(id).addEventListener(ev, layout);
+}
+
+$("inpPaper").addEventListener("input", () => {
+  if ($("inpPaper").value === "a4") {
+    $("inpPageW").value = 210;
+    $("inpPageH").value = 297;
+  }
+  layout();
+});
+$("fileTxt").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  $("inpText").value = await f.text();
+  layout();
+});
+$("btnReroll").onclick = () => { S.seed = (Math.random() * 1e9) | 0; layout(); };
+cv.addEventListener("click", e => {
+  const ps = pageSettings();
+  const cssW = Math.max(640, wrap.clientWidth);
+  const pageScale = Math.min(3, Math.max(1.2, (cssW - 90) / ps.w));
+  const gap = 34;
+  const y = e.offsetY + wrap.scrollTop;
+  const idx = Math.floor(y / (ps.h * pageScale + gap));
+  if (idx >= 0 && idx < S.pages.length) { S.selectedPage = idx; updatePageChips(); draw(); }
+});
+
+UI.initTheme();
+fillFontSelect();
+bindSlider("inpSize", "valSize", " mm");
+bindSlider("inpLineH", "valLineH", "x");
+bindSlider("inpTrack", "valTrack", " mm");
+bindSlider("inpWordSp", "valWordSp", "x");
+bindSlider("inpVRot", "valVRot", "°");
+bindSlider("inpVSize", "valVSize", "%");
+bindSlider("inpVBase", "valVBase", " mm");
+bindSlider("inpVWob", "valVWob", " mm");
+[
+  "inpText", "inpKeepBreaks", "inpPreserveParagraphs", "inpPageW", "inpPageH",
+  "inpMarginL", "inpMarginR", "inpMarginT", "inpMarginB", "inpAlign",
+  "inpFont", "inpVarOn", "inpGroup", "inpProcess", "inpFlipY",
+].forEach(id => bindRelayout(id, (id.startsWith("inp") && $(id).type === "checkbox") ? "change" : "input"));
+window.addEventListener("resize", draw);
+window.addEventListener("storage", e => { if (e.key === "hw_fonts") { fillFontSelect(); layout(); } });
+layout();
+</script>
+</body>
+</html>
