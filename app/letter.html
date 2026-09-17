@@ -135,7 +135,7 @@ Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
         <div><label>Margen inf. (mm)</label><input type="number" id="inpMarginB" value="18" min="0" max="80" step="0.5"></div>
       </div>
       <label>Lineas maximas por hoja</label>
-      <input type="number" id="inpMaxLines" value="20" min="10" max="60" step="1">
+      <input type="number" id="inpMaxLines" value="30" min="10" max="60" step="1">
       <div class="hint">Bambu Studio prepara mejor archivos con menos trazos por hoja. Sube este valor si quieres apurar mas texto por pagina.</div>
       <label>Alineacion</label>
       <select id="inpAlign">
@@ -190,11 +190,11 @@ Puedes pegar aqui una carta completa o cargar un archivo .txt.</textarea>
       </select>
       <label>Simplificacion de trazos</label>
       <select id="inpSimplify">
-        <option value="1">Alta, archivo mas ligero</option>
-        <option value="2" selected>Media, recomendada</option>
-        <option value="3">Suave</option>
-        <option value="4">Muy suave</option>
-        <option value="5">Sin simplificar</option>
+        <option value="bambu30" selected>Bambu 30 lineas, recomendada</option>
+        <option value="light">Alta, archivo mas ligero</option>
+        <option value="balanced">Media, letra mas fiel</option>
+        <option value="soft">Suave</option>
+        <option value="none">Sin simplificar</option>
       </select>
       <label>Proceso</label>
       <select id="inpProcess">
@@ -416,7 +416,7 @@ function makeGlyphsForLine(text, pageIndex, lineIndex, baselineY, ts, ps) {
 }
 
 function wobble(pts, amp, phase) {
-  const MAXSEG = 0.9;
+  const MAXSEG = 4.0;
   const out = [];
   let dist = 0;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -562,7 +562,8 @@ function updateStatus() {
 
 function buildGroups(page) {
   if (!page.glyphs.length) return null;
-  const eps = window.LacExport.resampleEps(+$("inpSimplify").value);
+  const simplifyEps = { bambu30: 0.5, light: 0.35, balanced: 0.18, soft: 0.08, none: 0 };
+  const eps = simplifyEps[$("inpSimplify").value] ?? 0.5;
   const clean = strokes => window.LacExport.resampleStrokes(strokes, eps);
   if ($("inpGroup").value === "line") {
     return page.lines.map((line, i) => ({
